@@ -9,10 +9,27 @@
     <script src="./face-api.min.js"></script>
     <style>
         body { text-align: center; font-family: Arial, sans-serif; }
-        video, canvas, .captured { margin: 10px; border: 2px solid black; }
-        .captured-container { display: flex; justify-content: center; }
-        .captured { width: 150px; height: 120px; object-fit: cover; }
-        #testImage { width: 200px; height: 160px; border: 2px solid red; display: none; }
+        video, canvas { margin: 10px; border: 2px solid black; }
+        
+        .captured-container, .test-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .captured, #testImage {
+            width: 150px;
+            height: 120px;
+            border: 2px solid black;
+            object-fit: cover;
+        }
+
+        #testImage {
+            border-color: red;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -24,20 +41,36 @@
     <button id="captureTest">Capture Test Image</button>
     <p id="status">Capture 3 images first, then capture a test image.</p>
 
+    <h3>Captured Faces:</h3>
     <div class="captured-container" id="capturedImages"></div>
+
     <h3>Test Image:</h3>
-    <img id="testImage">
+    <div class="test-container">
+        <img id="testImage">
+    </div>
 
     <script>
-        let capturedImages = [];  // Store registered face images
+        let faceDescriptors = [];  // Store registered face descriptors
+        let capturedImages = [];   // Store captured images
         let capturedCount = 0;
         let testImageSrc = "";
 
+        // async function loadModels() {
+        //     try {
+        //         await faceapi.nets.ssdMobilenetv1.loadFromUri('./models/ssd_mobilenetv1'); // ✅ Corrected path
+        //         await faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68'); // ✅ Corrected path
+        //         await faceapi.nets.faceRecognitionNet.loadFromUri('./models/face_recognition'); // ✅ Corrected path
+        //         console.log("✅ Models loaded successfully!");
+        //     } catch (error) {
+        //         console.error("❌ Model loading error:", error);
+        //     }
+        // }
+
         async function loadModels() {
             try {
-                await faceapi.nets.tinyFaceDetector.loadFromUri('./models/tiny_face_detector');
-                await faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68');
-                await faceapi.nets.faceRecognitionNet.loadFromUri('./models/face_recognition');
+                await faceapi.nets.ssdMobilenetv1.loadFromUri('./models/ssd_mobilenetv1'); // ✅ Load from subfolder
+                await faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68'); // ✅ Load from subfolder
+                await faceapi.nets.faceRecognitionNet.loadFromUri('./models/face_recognition'); // ✅ Load from subfolder
                 console.log("✅ Models loaded successfully!");
             } catch (error) {
                 console.error("❌ Model loading error:", error);
@@ -54,7 +87,7 @@
             }
         }
 
-        function capturePhoto(isTest = false) {
+        async function capturePhoto(isTest = false) {
             const video = document.getElementById("video");
             const canvas = document.createElement("canvas");
             canvas.width = video.videoWidth;
@@ -70,8 +103,8 @@
                 document.getElementById("testImage").src = testImageSrc;
                 document.getElementById("testImage").style.display = "block";
                 document.getElementById("status").innerText = "Test image captured!";
+                compareFaces();
             } else {
-                // Store and display the captured face images
                 if (capturedCount >= 3) {
                     alert("You have already captured 3 images!");
                     return;
@@ -96,6 +129,43 @@
                 img.classList.add("captured");
                 container.appendChild(img);
             });
+        }
+
+        async function compareFaces() {
+            if (capturedImages.length < 3 || !testImageSrc) {
+                alert("Please capture 3 face images and a test image first.");
+                return;
+            }
+
+            const testImage = await faceapi.fetchImage(testImageSrc);
+            const testDetection = await faceapi.detectSingleFace(testImage).withFaceLandmarks().withFaceDescriptor();
+
+            if (!testDetection) {
+                alert("No face detected in test image.");
+                return;
+            }
+
+            let bestMatch = null;
+            let lowestDistance = 1.0; // Lower means better match
+
+            for (let i = 0; i < capturedImages.length; i++) {
+                const sampleImage = await faceapi.fetchImage(capturedImages[i]);
+                const sampleDetection = await faceapi.detectSingleFace(sampleImage).withFaceLandmarks().withFaceDescriptor();
+
+                if (sampleDetection) {
+                    const distance = faceapi.euclideanDistance(sampleDetection.descriptor, testDetection.descriptor);
+                    if (distance < lowestDistance) {
+                        lowestDistance = distance;
+                        bestMatch = i;
+                    }
+                }
+            }
+
+            if (lowestDistance < 0.5) { // Adjust this threshold if needed
+                alert(`✅ Face Matched with Sample #${bestMatch + 1}!`);
+            } else {
+                alert("❌ No Match Found.");
+            }
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
