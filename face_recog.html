@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Recognition</title>
+    <title>Face Recognition (SSD MobileNetV1)</title>
 
     <script defer src="face-api.min.js"></script>
     <style>
@@ -97,7 +97,7 @@
                 }
 
                 let image = await faceapi.fetchImage(imgData);
-                let detection = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+                let detection = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
                 
                 if (!detection) {
                     alert("No face detected! Try again.");
@@ -135,7 +135,7 @@
             }
 
             const testImage = await faceapi.fetchImage(testImageSrc);
-            const testDetection = await faceapi.detectSingleFace(testImage).withFaceLandmarks().withFaceDescriptor();
+            const testDetection = await faceapi.detectSingleFace(testImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
 
             if (!testDetection) {
                 alert("No face detected in test image.");
