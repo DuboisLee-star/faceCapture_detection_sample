@@ -12,6 +12,7 @@
         video, canvas, .captured { margin: 10px; border: 2px solid black; }
         .captured-container { display: flex; justify-content: center; }
         .captured { width: 150px; height: 120px; object-fit: cover; }
+        #testImage { width: 200px; height: 160px; border: 2px solid red; display: none; }
     </style>
 </head>
 <body>
@@ -20,15 +21,17 @@
     <video id="video" width="640" height="480" autoplay></video>
     <br>
     <button id="capture">Capture Face</button>
-    <button id="identify" disabled>Identify Face</button>
-    <p id="status">Capture 3 images to proceed.</p>
+    <button id="captureTest">Capture Test Image</button>
+    <p id="status">Capture 3 images first, then capture a test image.</p>
 
     <div class="captured-container" id="capturedImages"></div>
+    <h3>Test Image:</h3>
+    <img id="testImage">
 
     <script>
-        let faceDescriptors = []; // Store registered face descriptors
-        let capturedImages = [];  // Store captured images
+        let capturedImages = [];  // Store registered face images
         let capturedCount = 0;
+        let testImageSrc = "";
 
         async function loadModels() {
             try {
@@ -51,38 +54,42 @@
             }
         }
 
-        function capturePhoto() {
-            if (capturedCount >= 3) {
-                alert("You have already captured 3 images!");
-                return;
-            }
-
+        function capturePhoto(isTest = false) {
             const video = document.getElementById("video");
             const canvas = document.createElement("canvas");
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext("2d");
 
-            // Draw video frame onto canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imgData = canvas.toDataURL("image/png");
-            
-            // Store image and show it on screen
-            capturedImages.push(imgData);
-            displayCapturedImages();
-            
-            capturedCount++;
 
-            if (capturedCount === 3) {
-                document.getElementById("identify").disabled = false; // Enable identification
-                document.getElementById("status").innerText = "3 images captured! You can now identify.";
+            if (isTest) {
+                // Store and display the test image
+                testImageSrc = imgData;
+                document.getElementById("testImage").src = testImageSrc;
+                document.getElementById("testImage").style.display = "block";
+                document.getElementById("status").innerText = "Test image captured!";
+            } else {
+                // Store and display the captured face images
+                if (capturedCount >= 3) {
+                    alert("You have already captured 3 images!");
+                    return;
+                }
+                capturedImages.push(imgData);
+                displayCapturedImages();
+                capturedCount++;
+
+                if (capturedCount === 3) {
+                    document.getElementById("status").innerText = "3 images captured! Now capture a test image.";
+                }
             }
         }
 
         function displayCapturedImages() {
             const container = document.getElementById("capturedImages");
-            container.innerHTML = ""; // Clear previous images
-            
+            container.innerHTML = ""; 
+
             capturedImages.forEach(imgSrc => {
                 const img = document.createElement("img");
                 img.src = imgSrc;
@@ -97,7 +104,8 @@
             startVideo();
         });
 
-        document.getElementById("capture").addEventListener("click", capturePhoto);
+        document.getElementById("capture").addEventListener("click", () => capturePhoto(false));
+        document.getElementById("captureTest").addEventListener("click", () => capturePhoto(true));
     </script>
 </body>
 </html>
