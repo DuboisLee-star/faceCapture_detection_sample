@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition (Local Models)</title>
+
+    <!-- ✅ Load local face-api.js -->
+    <script src="./face-api.min.js"></script>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        video, canvas, .captured { margin: 10px; border: 2px solid black; }
+        .captured-container { display: flex; justify-content: center; }
+        .captured { width: 150px; height: 120px; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <h1>Face Recognition System</h1>
+
+    <video id="video" width="640" height="480" autoplay></video>
+    <br>
+    <button id="capture">Capture Face</button>
+    <button id="identify" disabled>Identify Face</button>
+    <p id="status">Capture 3 images to proceed.</p>
+
+    <div class="captured-container" id="capturedImages"></div>
+
+    <script>
+        let faceDescriptors = []; // Store registered face descriptors
+        let capturedImages = [];  // Store captured images
+        let capturedCount = 0;
+
+        async function loadModels() {
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri('./models/tiny_face_detector');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68');
+                await faceapi.nets.faceRecognitionNet.loadFromUri('./models/face_recognition');
+                console.log("✅ Models loaded successfully!");
+            } catch (error) {
+                console.error("❌ Model loading error:", error);
+            }
+        }
+
+        async function startVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                document.getElementById("video").srcObject = stream;
+            } catch (error) {
+                console.error("❌ Camera access denied:", error);
+                alert("Please allow camera access to use face recognition.");
+            }
+        }
+
+        function capturePhoto() {
+            if (capturedCount >= 3) {
+                alert("You have already captured 3 images!");
+                return;
+            }
+
+            const video = document.getElementById("video");
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+
+            // Draw video frame onto canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imgData = canvas.toDataURL("image/png");
+            
+            // Store image and show it on screen
+            capturedImages.push(imgData);
+            displayCapturedImages();
+            
+            capturedCount++;
+
+            if (capturedCount === 3) {
+                document.getElementById("identify").disabled = false; // Enable identification
+                document.getElementById("status").innerText = "3 images captured! You can now identify.";
+            }
+        }
+
+        function displayCapturedImages() {
+            const container = document.getElementById("capturedImages");
+            container.innerHTML = ""; // Clear previous images
+            
+            capturedImages.forEach(imgSrc => {
+                const img = document.createElement("img");
+                img.src = imgSrc;
+                img.classList.add("captured");
+                container.appendChild(img);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            console.log("✅ DOM loaded, loading models...");
+            await loadModels();
+            startVideo();
+        });
+
+        document.getElementById("capture").addEventListener("click", capturePhoto);
+    </script>
+</body>
+</html>
